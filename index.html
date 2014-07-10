@@ -1,0 +1,242 @@
+<html>
+  <head>
+  	
+  			<style>
+		body{height:100%; margin:0; padding:0; }
+		.spoke{ width: 50%; height: 0; position: relative; left: 0; top: 50%; -webkit-transform-origin: 100% 0;
+			-webkit-transition: all 0.5s; cursor: pointer;
+		}
+		.node{ position: absolute; width: 22px; height: 22px; border-radius: 100%; top:-11px; left: 0; z-index: 99; background: #eee; }
+		.zone{ position: relative; float: left; left: 0; top:0; -webkit-transition: all 0.5s; width: 100px; height: 300px; margin: 0 5px;}
+		#zone .spoke{ width: 200px;}
+
+		.node.n2{left:15%; width: 18px; height: 18px; top:-9px;}
+		.node.n3{left:28%; width: 16px; height: 16px;  top:-8px;}
+		.node.n4{left:41%; width: 14px; height: 14px;  top:-7px;}
+		.node.n5{left:54%; width: 12px; height: 12px;  top:-6px;}
+		.node.n6{left:68%; width: 10px; height: 10px;  top:-5px;}
+		.centreNode{left:50%; width: 14px; height: 14px;  top:50%; margin-left: -7px; margin-top: -7px;}
+
+		#sholder{ margin: auto; padding-left: 100px;-webkit-transition: all 0.5s; cursor: pointer;}
+		#sholder:hover{padding-left: 0;}
+		#holder:hover .zone.on{width: 100px;}
+		div{-webkit-touch-callout: none;
+-webkit-user-select: none;
+-khtml-user-select: none;
+-moz-user-select: none;
+-ms-user-select: none;
+user-select: none;}
+	#holder{width: 1030px; height: 300px; margin: auto;}
+			.z1 .node{background-color: rgb(244, 109, 67)}
+			.z2 .node{background-color: rgb(253, 174, 97)}
+			.z3 .node{background-color: rgb(254, 224, 139)}
+			.z4 .node{background-color: rgb(255, 255, 0)}
+			.z5 .node{background-color: rgb(217, 239, 139)}
+			.z6 .node{background-color: rgb(166, 217, 106)}
+			.z7 .node{background-color: rgb(102, 189, 99)}
+			.z8 .node{background-color: rgb(26, 152, 80)}
+			.nodeMask{ background: white; opacity: 0.7; width:90%; height: 90%;border-radius: 100%; position: absolute; pointer-events:none; border: 1px solid #CCC;}
+			.node.on .nodeMask{ display: none;}
+			.centreNode .nodeMask{background: transparent;}
+		</style>
+  </head>
+  <body>
+  <button id="syncTrack">Sync</button>
+  <button id="play">Play</button>
+  <button id="pause">Pause</button>
+  <button id="random">Random</button>
+  <button id="refresh">Refresh</button><input id="node"/><button id="nudge">Nudge</button><button id="click">Click</button><button id="stopPing">stop ping</button>
+  <button id="move">move</button>
+  <!--<button id="vol">Vol</button><input id="v" value="0,0,0"/>-->
+
+
+	<div id="holder">
+			<div class="zone z1"></div><div class="zone z2"></div><div class="zone z3"></div><div class="zone z4"></div>
+			<div class="zone z5"></div><div class="zone z6"></div><div class="zone z7"></div><div class="zone z8"></div>
+	</div>
+
+
+
+  <script src='http://code.jquery.com/jquery-1.11.0.min.js'></script>
+		<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+		<script>
+		  var socket = io.connect('http://localhost:3000');
+		  var slaves = [];
+		  var slaves2 = [];
+
+		  var volMatrix = [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]];
+
+
+		  socket.on('transmit', function (data) {
+		    var instr= JSON.parse(data);
+		  	//console.log(instr);
+		  	if(instr.type=="nodehandshake"){
+		  		thisNodeId = instr.clientId;
+		        console.log('node ' + thisNodeId + 'connected');
+		        slaves.push(thisNodeId);
+		        slaves2.push(thisNodeId);
+		        var sl = (slaves.length*2)-2;
+		        var c = { type : 'speakers', id : thisNodeId, l: sl, r: (sl+1) };
+		  		socket.emit('broadcast', JSON.stringify(c));
+		    }
+		  });
+
+		/*  setInterval(function(){
+		  		socket.emit('myevent', +new Date);
+		  }, 100);*/
+
+		//socket.emit('myevent', +new Date);
+
+
+		  $('button#syncTrack').on('click', function(){
+		  		//var c = { type : 'sync', time : +new Date}
+		  		var c = { type : 'startSyncTrack', time : +new Date}
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#play').on('click', function(){
+		  		var c = { type : 'play', time : +new Date}
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#pause').on('click', function(){
+		  		var c = { type : 'pause', time : +new Date}
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#vol').on('click', function(){
+		  		var v = $('#v').val().split(',');
+		  		var c = { type : 'volch', t : v[0], s : v[1], v : v[2] }
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#move').on('click', function(){
+		  	$('.zone').each(function(){
+		  		$(this).find('.none.on:first').trigger('click');
+		  	});
+		  		//var v = $('#v').val().split(',');
+		  		//var c = { type : 'volch', t : v[0], s : v[1], v : v[2] }
+		  		//socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#random').on('click', function(){
+
+		  		var a = Math.floor(Math.random()*3);
+		  		var b= Math.floor(Math.random()*8);
+		  		var d= Math.random();
+		  		if(d<0.4){d=0};
+		  		var c = { type : 'volch', t : 0, s: b, v : d}
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  });
+		  $('button#refresh').on('click', function(){
+		  		$('#node').val(parseInt($('#node').val(),10)+1);
+		  		var c = { type : 'refresh', id : $('#node').val() }
+				
+		  		socket.emit('broadcast', JSON.stringify(c));
+
+		  });
+		  $('button#nudge').on('click', function(){
+		  		var c = { type : 'nudge', id : $('#node').val() }
+				//$('#node').val(parseInt($('#node').val(),10)+1);
+		  		socket.emit('broadcast', JSON.stringify(c));
+
+		  });
+		  $('button#click').on('click', function(){
+		  		var c = { type : 'click', id : $('#node').val() }
+				//$('#node').val(parseInt($('#node').val(),10)+1);
+		  		socket.emit('broadcast', JSON.stringify(c));
+
+		  });
+		  $('button#stopPing').on('click', function(){
+		  		var c = { type : 'stopPing' };
+				//$('#node').val(parseInt($('#node').val(),10)+1);
+		  		socket.emit('broadcast', JSON.stringify(c));
+
+		  });
+		  function setMaster(id, v){
+		  		var c = { type : 'masterGain', id : id, v:v }
+		  		socket.emit('broadcast', JSON.stringify(c));
+		  }
+		  setInterval(function(){
+		  	//$('button#random').trigger('click');
+
+		  },20000)
+		</script>
+
+				<script>
+				var count = 0;
+				nodeOp=0;
+				sp = ['leftSp', 'rightSp'];
+				var currentTrack = 0;
+				var currentTrackLR = 0;
+
+
+				var tracks = 2;
+
+
+				for(var i=67; i<427; i+=45){
+					$('.zone').append('<div class="spoke" data-arm="' + (count++) + '" style="-webkit-transform: rotate(' + (i) + 'deg);"><div class="node n1" data-id="1"></div><div class="node n2" data-id="2"></div><div class="node n3" data-id="3"></div><div class="node n4" data-id="4"></div><div class="node n5" data-id="5"></div><div class="node n6" data-id="6"></div></div><div class="centreNode node"></div>');
+				}
+
+				$('.node').append('<div class="nodeMask"></div>');
+
+
+				$('.node').on('click', function(e){
+					e.stopPropagation();
+					var n= $(this);
+					var s= $(this).closest('.spoke');
+					var cancelvol=false;
+					if(n.is('.on')){
+						if(s.attr('data-vol')==n.attr('data-id')){
+							console.log('cancelvol');
+							cancelvol=true;
+						}
+					}
+					console.log(s.attr('data-arm') + ',' + n.attr('data-id'));
+					s.find('.node').removeClass('on');
+					if(cancelvol){
+						s.attr('data-vol',0);
+						var z = s.closest('.zone').index();
+						var c = { type : 'volch', t : z , s: s.attr('data-arm'), v : 0 };
+			  			socket.emit('broadcast', JSON.stringify(c));
+			  			volMatrix[z][s.attr('data-arm')] = 0;
+					 	return false;
+					}
+					$(this).addClass('on');
+					s.find('.node:gt(' + (n.attr('data-id')-1) + ')').addClass('on');
+					s.attr('data-vol', n.attr('data-id'));
+
+					var vol = 1.1-((parseInt(s.attr('data-vol')))/5)
+					var z = s.closest('.zone').index();
+					var c = { type : 'volch', t : z , s : s.attr('data-arm'), v : vol };
+		  			socket.emit('broadcast', JSON.stringify(c));
+		  			volMatrix[z][s.attr('data-arm')] = vol;
+				});
+
+				$('.zone').on('mouseenter', function(e){
+					$('.zone').removeClass('on');
+					$(this).addClass('on');
+				});
+
+			
+
+				$('.zone').first().addClass('on');
+
+				var vollies = [0,1,2,3,4,5,6,7];
+				var ons = [0,4,7,3,1,4,6,2];
+				function shifter(){
+						for(var i=0; i<8; i++){
+							var c = { type : 'volch', t : i, s : ons[i], v : 0.2 };
+							socket.emit('broadcast', JSON.stringify(c));
+						}
+						var a= ons.shift();
+						ons.push(a);
+						for(var i=0; i<8; i++){
+							var c = { type : 'volch', t : i, s : ons[i], v : 1 };
+							socket.emit('broadcast', JSON.stringify(c));
+						}
+				}
+
+				setInterval(function(){
+					//shifter();
+
+				}, 5000);
+
+		</script>
+	</body>
+</html>
